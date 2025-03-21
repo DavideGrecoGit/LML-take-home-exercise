@@ -1,3 +1,10 @@
+"""Python script to:
+1) Read given DNA sequences (JSON file)
+2) Calculate and report basic sequence statistic of GC-content and Dinucleotide frequencies
+3) Identify the top 5 most common k-mers (substrings) for k=3, 4, and 5
+4) Detect any unusual patterns
+"""
+
 import json
 import argparse
 from pathlib import Path
@@ -557,6 +564,8 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    ####### 1) READ THE DATA #######
+
     dna_sequences = read_dna_sequences(args.file_path, args.seq_key)
 
     print("\n~ Checking for invalid characters in sequence\n")
@@ -566,7 +575,11 @@ if __name__ == "__main__":
     dna_sequences = remove_invalid_chars(dna_sequences, VALID_CHARS)
     print_invalid_chars(dna_sequences, VALID_CHARS)
 
-    print("\n~ SECTION A. Calculate and report basic sequence statistic")
+    ####### 2) GC-content, dinucleotide frequency and clustering #######
+
+    print(
+        "\n~ SECTION A. Calculate and report basic sequence statistic of GC-content, dinucleotide frequency"
+    )
 
     print("\nCompute and plot overall GC-content")
     df_gc_content = compute_gc_content(dna_sequences)
@@ -623,6 +636,8 @@ if __name__ == "__main__":
     plt.savefig(os.path.join(PLOTS_PATH, "clustered_gc_content.jpeg"))
     plt.close()
 
+    ####### 3) TOP 5 k-mers for k=3, 4, and 5 #######
+
     print(
         "\n~ SECTION B. Identify the top 5 most common k-mers (substrings) for k=3, 4, and 5"
     )
@@ -637,6 +652,8 @@ if __name__ == "__main__":
             f"Top {n} {k}-mer Count Heatmap",
             os.path.join(PLOTS_PATH, f"top_{k}_mer_heatmap.jpeg"),
         )
+
+    ####### 4) Unusual patterns #######
 
     print("\n~ SECTION C. Detect any unusual patterns")
     print("Find palindromes")
