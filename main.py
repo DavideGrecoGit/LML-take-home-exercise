@@ -14,6 +14,8 @@ VALID_CHARS = {"T", "G", "C", "A"}
 
 PLOTS_PATH = "./plots"
 
+K_TOP_MERS = [3, 4, 5]
+
 PALINDROMES_MIN_LENGTH = 20
 
 TANDEM_REPEATS_MIN_LENGTH = 1
@@ -285,7 +287,7 @@ def get_complement(nucleotide: str) -> str:
     return complement.get(nucleotide, "")
 
 
-def find_palindromes_idx(sequence: str, min_length=20) -> list[tuple[int, int]]:
+def find_palindromes_idx(sequence: str, min_length: int) -> list[tuple[int, int]]:
     """Find the start and end indices of all palindromes in the given sequence that
     are even in lenght, longer than or equal to the specified minimum length and contain at least three different nucleotide bases.
 
@@ -293,7 +295,7 @@ def find_palindromes_idx(sequence: str, min_length=20) -> list[tuple[int, int]]:
 
     Args:
         sequence (str): DNA sequence, should contain only A, T, C, G characters.
-        min_length (int, optional): Desired minimum length of the palindrome. Defaults to 20.
+        min_length (int): Desired minimum length of the palindrome.
 
     Returns:
         list[tuple[int, int]]: List of all the start and end indices of the found palindromes.
@@ -325,14 +327,16 @@ def find_palindromes_idx(sequence: str, min_length=20) -> list[tuple[int, int]]:
     return palindromes
 
 
-def collect_all_palindromes(dna_sequences: list[str]) -> pd.DataFrame:
+def collect_all_palindromes(
+    dna_sequences: list[str], min_length: int = 20
+) -> pd.DataFrame:
     """In each sequence of a given list of DNA sequences, find all palindromes along with:
      - their lenght
      - start and end indices
 
     Args:
         dna_sequences (list[str]): List of DNA sequences, should contain only A, T, C, G characters.
-
+        min_length (int, Optional): Desired minimum length of the palindrome. Defaults to 20.
     Returns:
         pd.DataFrame: A Pandas DataFrame containing the found palindromes and their information, for each sequence.
     """
@@ -340,9 +344,7 @@ def collect_all_palindromes(dna_sequences: list[str]) -> pd.DataFrame:
 
     for id, sequence in enumerate(dna_sequences):
 
-        palindromes_idx = find_palindromes_idx(
-            sequence, min_length=PALINDROMES_MIN_LENGTH
-        )
+        palindromes_idx = find_palindromes_idx(sequence, min_length=min_length)
 
         for start, end in palindromes_idx:
             all_palindromes.append(
@@ -443,10 +445,10 @@ def collect_all_tandem_repeats(
 
     Args:
         dna_sequences (list[str]): List of DNA sequences, should contain only A, T, C, G characters.
-        min_length (int): The minimum length of the repeating pattern.
+        min_length (int, optional): The minimum length of the repeating pattern. Defaults to 1.
         max_length (int, optional): The maximum length of the repeating pattern. Defaults to -1,
                                      which indicates no maximum length.
-        min_repeats (int): The minimum number of repeats required to consider it a tandem repeat.
+        min_repeats (int, optional): The minimum number of repeats required to consider it a tandem repeat. Defaults to 3.
 
     Returns:
         pd.DataFrame: A Pandas DataFrame containing the found tandem_repeats and their information, for each sequence.
@@ -526,7 +528,7 @@ if __name__ == "__main__":
 
     print("\n~ b. Identify the top 5 most common k-mers (substrings) for k=3, 4, and 5")
     n = 5
-    for k in [3, 4, 5]:
+    for k in K_TOP_MERS:
 
         print(f"Compute top {n} {k}-mer count")
 
@@ -539,7 +541,7 @@ if __name__ == "__main__":
 
     print("\n~ c. Detect any unusual patterns")
     print("Find palindromes")
-    df_palindromes = collect_all_palindromes(dna_sequences)
+    df_palindromes = collect_all_palindromes(dna_sequences, PALINDROMES_MIN_LENGTH)
     print(df_palindromes.head())
 
     print("\nFind tandem repeats")
