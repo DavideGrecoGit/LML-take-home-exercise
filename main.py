@@ -1,9 +1,11 @@
 import json
 import argparse
 from pathlib import Path
+from collections import Counter
 
 FILE_PATH = "./dna_sequences.json"
 DNA_SEQUENCE_KEY = "sequences"
+VALID_CHARS = {"T", "G", "C", "A"}
 
 
 def read_dna_sequences(file_path: str, dna_sequence_key: str) -> list:
@@ -38,6 +40,39 @@ def read_dna_sequences(file_path: str, dna_sequence_key: str) -> list:
     raise Exception("Given file path is not valid.")
 
 
+def print_invalid_chars(dna_sequences: list[str], valid_chars: set[str]) -> None:
+    """For each sequence, prints all the invalid characters found and their positions.
+    Additionally, print the count of each invalid character found.
+
+    Args:
+        dna_sequences (list[str]): list of DNA sequences.
+        valid_chars (list[str]): set of accepted nucleotide bases.
+    """
+
+    invalid_chars = []
+
+    for id, sequence in enumerate(dna_sequences):
+
+        if isinstance(sequence, str):
+
+            for j in range(len(sequence)):
+
+                if sequence[j] not in valid_chars:
+                    print(f"Sequence {id} - position {j}: {sequence[j]}")
+                    invalid_chars.append(sequence[j])
+        else:
+            print(f"Sequence {id} is not a string")
+
+    invalid_chars = Counter(invalid_chars)
+
+    print("\nInvalid characters: ")
+    if len(invalid_chars) > 0:
+        for char, count in invalid_chars.items():
+            print(f"Char {char} - Count {count}")
+    else:
+        print("None found")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     file_path = parser.add_argument("-file", "--file_path", type=str, default=FILE_PATH)
@@ -48,4 +83,5 @@ if __name__ == "__main__":
 
     dna_sequences = read_dna_sequences(args.file_path, args.seq_key)
 
-    print(dna_sequences)
+    print("Check for invalid characters in sequence\n")
+    print_invalid_chars(dna_sequences, VALID_CHARS)
