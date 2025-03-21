@@ -14,6 +14,8 @@ VALID_CHARS = {"T", "G", "C", "A"}
 
 PLOTS_PATH = "./plots"
 
+PALINDROMES_MIN_LENGTH = 20
+
 
 def read_dna_sequences(file_path: str, dna_sequence_key: str) -> list:
     """Reads DNA sequences from a JSON file.
@@ -264,6 +266,96 @@ def plot_kmer_heatmap(
     plt.close()
 
 
+def get_complement(nucleotide: str) -> str:
+    """Get the complementary nucleotide of a given nucleotide base.
+
+    Args:
+        nucleotide (str): A single nucleotide (A, T, C, G).
+
+    Returns:
+        str: The complementary nucleotide. If no complementary is found, an empty string is returned.
+    """
+
+    complement = {"A": "T", "T": "A", "C": "G", "G": "C"}
+
+    return complement.get(nucleotide, "")
+
+
+def find_palindromes_idx(sequence: str, min_length=20) -> list[tuple[int, int]]:
+    """Find the start and end indices of all palindromes in the given sequence that
+    are even in lenght, longer than or equal to the specified minimum length and contain at least three different nucleotide bases.
+
+    A nucleotide sequence is palindromic if it is equal to its reverse complement.
+
+    Args:
+        sequence (str): DNA sequence, should contain only A, T, C, G characters.
+        min_length (int, optional): Desired minimum length of the palindrome. Defaults to 20.
+
+    Returns:
+        list[tuple[int, int]]: List of all the start and end indices of the found palindromes.
+                                If no palindromes are found, an empty list is returned.
+    """
+
+    palindromes = []
+
+    if min_length < 3:
+        return palindromes
+
+    for i in range(len(sequence) - 1):
+        left = i
+        right = i + 1
+
+        while (
+            left >= 0
+            and right < len(sequence)
+            and sequence[left] == get_complement(sequence[right])
+        ):
+            left -= 1
+            right += 1
+
+        pal = sequence[left + 1 : right]
+
+        if len(pal) >= min_length and len(set(pal)) >= 3:
+            palindromes.append((left + 1, right))
+
+    return palindromes
+
+
+def collect_all_palindromes(dna_sequences: list[str]) -> pd.DataFrame:
+    """Find all palindromes, along their lenght and start and end indices,
+    in each sequence of a given list of DNA sequences.
+
+    Args:
+        dna_sequences (list[str]): List of DNA sequences, should contain only A, T, C, G characters.
+
+    Returns:
+        pd.DataFrame: A Pandas DataFrame containing the found palindromes and their information, for each sequence.
+    """
+    all_palindromes = []
+
+    for id, sequence in enumerate(dna_sequences):
+
+        palindromes_idx = find_palindromes_idx(
+            sequence, min_length=PALINDROMES_MIN_LENGTH
+        )
+
+        for start, end in palindromes_idx:
+            all_palindromes.append(
+                {
+                    "sequence_id": id,
+                    "palindrome": sequence[start:end],
+                    "length": end - start,
+                    "start": start + 1,  # Adjusting for 1-based index
+                    "end": end,
+                }
+            )
+
+    df_palindromes = pd.DataFrame(all_palindromes)
+    df_palindromes.sort_values("length", ascending=False)
+
+    return df_palindromes
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     file_path = parser.add_argument("-file", "--file_path", type=str, default=FILE_PATH)
@@ -310,3 +402,8 @@ if __name__ == "__main__":
             f"Top {n} {k}-mer Count Heatmap",
             os.path.join(PLOTS_PATH, f"top_{k}_mer_heatmap.jpeg"),
         )
+
+    print("\n~ c. Detect any unusual patterns")
+    print("Found palindromes")
+    df_palindromes = collect_all_palindromes(dna_sequences)
+    print(df_palindromes.head())
