@@ -2,6 +2,7 @@ import json
 import argparse
 from pathlib import Path
 from collections import Counter
+import re
 
 FILE_PATH = "./dna_sequences.json"
 DNA_SEQUENCE_KEY = "sequences"
@@ -73,6 +74,28 @@ def print_invalid_chars(dna_sequences: list[str], valid_chars: set[str]) -> None
         print("None found")
 
 
+def remove_invalid_chars(dna_sequences: list[str], valid_chars: set[str]) -> list[str]:
+    """For each sequence, remove all the invalid characters found.
+
+    Args:
+        dna_sequences (list[str]): list of DNA sequences.
+        valid_chars (list[str]): set of accepted nucleotide bases.
+    Returns:
+        list[str]: A list of DNA sequences without any invalid characters.
+    """
+
+    valid_pattern = "".join(valid_chars)
+
+    if valid_pattern == "":
+        return ["" for i in dna_sequences]
+
+    for i in range(len(dna_sequences)):
+
+        dna_sequences[i] = re.sub(f"[^{valid_pattern}]", "", dna_sequences[i])
+
+    return dna_sequences
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     file_path = parser.add_argument("-file", "--file_path", type=str, default=FILE_PATH)
@@ -83,5 +106,9 @@ if __name__ == "__main__":
 
     dna_sequences = read_dna_sequences(args.file_path, args.seq_key)
 
-    print("Check for invalid characters in sequence\n")
+    print("\n~ Checking for invalid characters in sequence\n")
+    print_invalid_chars(dna_sequences, VALID_CHARS)
+
+    print("\n~ Removing invalid characters")
+    dna_sequences = remove_invalid_chars(dna_sequences, VALID_CHARS)
     print_invalid_chars(dna_sequences, VALID_CHARS)
