@@ -153,6 +153,82 @@ def plot_gc_content(
     plt.close()
 
 
+def count_kmers(sequence: str, k: int = 2) -> dict[str, int]:
+    """Counts the k-mers of lenght k contained in the given DNA sequence. Overlapping k-mers are included.
+
+    A k-mer is a sequence of k nucleotides in a DNA sequence.
+
+    Args:
+        sequence (str): DNA sequence, should contain only A, T, C, G characters.
+        k (int, optional): the k-mer length. Defaults to 2.
+
+    Returns:
+        dict[str, int]: dictionary having the found k-mers (keys) and their relative count (values).
+    """
+
+    kmers = {}
+
+    if not sequence or k <= 0:
+        return kmers
+
+    for i in range(len(sequence) - k + 1):
+
+        key = sequence[i : i + k]
+        kmers[key] = kmers.get(key, 0) + 1
+
+    return kmers
+
+
+def compute_dinucleotide_freq(dna_sequences: list[str]) -> pd.DataFrame:
+    """Compute the dinucleotide frequency of a given list of DNA sequences.
+    For each found dinucleotide in a sequence, its frequency is computed as: (occurrence of dinucleotide) / (total number of dinucleotides)
+
+    Args:
+        dna_sequences (list[str]): List of DNA sequences, should contain only A, T, C, G characters.
+
+    Returns:
+        pd.DataFrame: A Pandas DataFrame containing the dinucleotide frequencies for each sequence.
+    """
+
+    dinucleotide_frequencies = []
+
+    for sequence in dna_sequences:
+
+        dinucleotide_counts = count_kmers(sequence, 2)
+
+        total_dinucleotides = sum(dinucleotide_counts.values())
+        dinucleotide_frequencies.append(
+            {
+                key: value / total_dinucleotides
+                for key, value in dinucleotide_counts.items()
+            }
+        )
+
+    df_dinucleotide_freq = pd.DataFrame(dinucleotide_frequencies)
+    df_dinucleotide_freq.fillna(0, inplace=True)
+    df_dinucleotide_freq.rename_axis("sequence_id", inplace=True)
+
+    return df_dinucleotide_freq
+
+
+def plot_kmer_heatmap(
+    df_kmer: pd.DataFrame, plot_title: str, plot_name_path: str | os.PathLike
+) -> None:
+    """Plot a heatmap of k-mer frequencies.
+
+    Args:
+        df_kmer (pd.DataFrame): A DataFrame having as columns all the found kmers and as values their count or frequency in a specific sequence.
+        plot_title (str): Title for the plot.
+        plot_name_path (str | os.PathLike): Path to save the plot.
+    """
+
+    sns.heatmap(df_kmer)
+    plt.title(plot_title)
+    plt.xlabel("k-mers")
+    plt.savefig(plot_name_path)
+    plt.close()
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     file_path = parser.add_argument("-file", "--file_path", type=str, default=FILE_PATH)
@@ -177,4 +253,13 @@ if __name__ == "__main__":
     plot_gc_content(
         df_gc_content,
         os.path.join(PLOTS_PATH, "overall_gc_content.jpeg"),
+    )
+
+    print("Compute dinucleotide frequency")
+    df_dinucleotide_freq = compute_dinucleotide_freq(dna_sequences)
+
+    plot_kmer_heatmap(
+        df_dinucleotide_freq,
+        "Dinucleotide Frequency Heatmap",
+        os.path.join(PLOTS_PATH, "dinucleotide_freq.jpeg"),
     )
