@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import os
 from scipy.cluster import hierarchy
 from scipy.cluster.hierarchy import fcluster
+from scipy.stats import f_oneway
 
 FILE_PATH = "./dna_sequences.json"
 DNA_SEQUENCE_KEY = "sequences"
@@ -30,7 +31,7 @@ PALINDROMES_MIN_LENGTH = 20
 
 TANDEM_REPEATS_MIN_LENGTH = 1
 TANDEM_REPEATS_MAX_LENGTH = 100
-TANDEM_REPEATS_MIN_REPEATS = 5
+TANDEM_REPEATS_MIN_REPEATS = 1
 
 
 def read_dna_sequences(file_path: str, dna_sequence_key: str) -> list:
@@ -552,7 +553,6 @@ def collect_all_tandem_repeats(
             )
 
     df_tandem_repeats = pd.DataFrame(all_tandem_repeats)
-    df_tandem_repeats.rename_axis("sequence_id", inplace=True)
 
     return df_tandem_repeats
 
@@ -588,6 +588,8 @@ if __name__ == "__main__":
         df_gc_content,
         os.path.join(PLOTS_PATH, "overall_gc_content.jpeg"),
     )
+
+    print(df_gc_content["gc_content"].describe().to_markdown())
 
     print("\nCompute dinucleotide frequency")
     df_dinucleotide_freq = compute_dinucleotide_freq(dna_sequences)
@@ -637,6 +639,17 @@ if __name__ == "__main__":
     plt.savefig(os.path.join(PLOTS_PATH, "clustered_gc_content.jpeg"))
     plt.close()
 
+    print("\n Are GC-content clusters significally different?")
+
+    gc_content_groups = [
+        df_gc_content_clustered.loc[
+            df_gc_content_clustered["clusters"] == c, "gc_content"
+        ].values  # type: ignore
+        for c in df_gc_content_clustered["clusters"].dropna().unique()
+    ]
+    stat, p_value = f_oneway(*gc_content_groups)
+    print(f"F Test: statistic={stat:.4f}, p-value={p_value:.4f}")
+
     ####### 3) TOP 5 k-mers for k=3, 4, and 5 #######
 
     print(
@@ -659,7 +672,7 @@ if __name__ == "__main__":
     print("\n~ SECTION C. Detect any unusual patterns")
     print("Find palindromes")
     df_palindromes = collect_all_palindromes(dna_sequences, PALINDROMES_MIN_LENGTH)
-    print(df_palindromes.head())
+    print(df_palindromes.head().to_markdown())
 
     print("\nFind tandem repeats")
     df_tandem_repeats = collect_all_tandem_repeats(
@@ -669,17 +682,44 @@ if __name__ == "__main__":
         TANDEM_REPEATS_MIN_REPEATS,
     )
 
+    filter_columns = [
+        "sequence_id",
+        "length",
+        "repeating_pattern",
+        "n_repetitions",
+        "start",
+        "end",
+    ]
+
     print("\nWhat are the top 10 longest tandem repeats in the dataset?\n")
-    print(df_tandem_repeats.sort_values("length", ascending=False).head(10))
+    top_10_longest = df_tandem_repeats.sort_values("length", ascending=False).head(10)
+
+    print(
+        top_10_longest.loc[
+            :,
+            filter_columns,
+        ].to_markdown()
+    )
 
     print(
         "\nWhat are the top 10 repeating patterns most repeated in a single tandem repeat?\n"
     )
-    print(df_tandem_repeats.sort_values("n_repetitions", ascending=False).head(10))
+    top_10_repeating = df_tandem_repeats.sort_values(
+        "n_repetitions", ascending=False
+    ).head(10)
+
+    print(
+        top_10_repeating.loc[
+            :,
+            filter_columns,
+        ].to_markdown()
+    )
 
     print("\nWhat are the top 10 most common repeating patterns in the dataset?\n")
-    print(
+    top_10_repeated = (
         df_tandem_repeats.groupby("repeating_pattern")
         .sum()["n_repetitions"]
         .nlargest(10)
     )
+
+    print(top_10_repeated.to_markdown())
