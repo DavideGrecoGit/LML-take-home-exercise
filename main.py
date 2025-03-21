@@ -7,6 +7,8 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import os
+from scipy.cluster import hierarchy
+from scipy.cluster.hierarchy import fcluster
 
 FILE_PATH = "./dna_sequences.json"
 DNA_SEQUENCE_KEY = "sequences"
@@ -151,7 +153,6 @@ def plot_gc_content(
     Args:
         df_gc_content (pd.DataFrame): A 1-D DataFrame containing the GC-content of each sequence.
         plot_name_path (str | os.PathLike, optional): Path to save the plot. Defaults to None.
-
     """
 
     sns.histplot(data=df_gc_content, kde=True)
@@ -270,6 +271,62 @@ def plot_kmer_heatmap(
     plt.xlabel("k-mers")
     plt.savefig(plot_name_path)
     plt.close()
+
+
+def compute_and_plot_hierarchical_clustering(
+    df_dinucleotide_freq: pd.DataFrame,
+    n_clusters: int,
+    plot_name_path: str | os.PathLike,
+):
+    """Cluster DNA sequences and dineuclotides based on dineuclotides frequency values.
+    If a path is provided, generate and save a heatmap of dinucleotide frequency, highlighting the identified clusters.
+
+    Args:
+        df_dinucleotide_freq (pd.DataFrame): A Pandas DataFrame containing the dinucleotide frequency of each sequence.
+        n_clusters (int): Number of clusters to select.
+        plot_name_path (str | os.PathLike, optional): Path to save the plot. Defaults to None.
+    """
+    # Cluster DNA sequences
+    row_linkage = hierarchy.linkage(
+        y=df_dinucleotide_freq, metric="euclidean", method="ward"
+    )
+
+    # Cluster dineuclotides
+    col_linkage = hierarchy.linkage(
+        df_dinucleotide_freq.T, metric="euclidean", method="ward"
+    )
+
+    # Extract labels of the biggest n clusters
+    cluster_labels = fcluster(row_linkage, t=n_clusters, criterion="maxclust")
+
+    df_clusters = pd.DataFrame(
+        cluster_labels, index=df_dinucleotide_freq.index, columns=["clusters"]
+    )
+
+    if plot_name_path:
+        # Define cluster colors
+        unique_clusters = df_clusters["clusters"].unique()
+        tableau_colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+        color_map = {
+            cluster: tableau_colors[i] for i, cluster in enumerate(unique_clusters)
+        }
+
+        row_colors = df_clusters["clusters"].map(color_map)
+
+        # Plot heatmap
+        sns.clustermap(
+            df_dinucleotide_freq,
+            row_linkage=row_linkage,
+            col_linkage=col_linkage,
+            method="ward",
+            figsize=(8, 8),
+            row_colors=row_colors,
+        )
+        plt.title("DNA sequences clustered by dinucleotide frequency")
+        plt.savefig(plot_name_path)
+        plt.close()
+
+    return df_clusters
 
 
 def get_complement(nucleotide: str) -> str:
@@ -509,16 +566,16 @@ if __name__ == "__main__":
     dna_sequences = remove_invalid_chars(dna_sequences, VALID_CHARS)
     print_invalid_chars(dna_sequences, VALID_CHARS)
 
-    print("\n~ a. Calculate and report basic sequence statistic")
+    print("\n~ SECTION A. Calculate and report basic sequence statistic")
 
-    print("Compute and plot overall GC-content")
+    print("\nCompute and plot overall GC-content")
     df_gc_content = compute_gc_content(dna_sequences)
     plot_gc_content(
         df_gc_content,
         os.path.join(PLOTS_PATH, "overall_gc_content.jpeg"),
     )
 
-    print("Compute dinucleotide frequency")
+    print("\nCompute dinucleotide frequency")
     df_dinucleotide_freq = compute_dinucleotide_freq(dna_sequences)
     plot_kmer_heatmap(
         df_dinucleotide_freq,
@@ -526,7 +583,49 @@ if __name__ == "__main__":
         os.path.join(PLOTS_PATH, "dinucleotide_freq.jpeg"),
     )
 
-    print("\n~ b. Identify the top 5 most common k-mers (substrings) for k=3, 4, and 5")
+    print("\nDNA sequences clustering based on dinucleotide frequency")
+
+    df_clusters = compute_and_plot_hierarchical_clustering(
+        df_dinucleotide_freq,
+        3,
+        os.path.join(PLOTS_PATH, "clustered_dna_sequences.jpeg"),
+    )
+
+    print("\nFound clusters")
+    print(df_clusters.value_counts())
+
+    # Group and GC-content values based on found clusters
+
+    df_gc_content_clustered = pd.concat([df_gc_content, df_clusters], axis=1)  # type: ignore
+
+    # Print stats
+    stats = df_gc_content_clustered.groupby("clusters").agg(["mean", "std"])
+    print("\nGC Content Statistics by Cluster:")
+    print(stats)
+
+    # Plot clustered GC-content
+
+    unique_clusters = df_clusters["clusters"].unique()
+    tableau_colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+    color_map = {
+        cluster: tableau_colors[i] for i, cluster in enumerate(unique_clusters)
+    }
+
+    sns.violinplot(
+        data=df_gc_content_clustered,
+        y="gc_content",
+        x="clusters",
+        hue="clusters",
+        palette=color_map,
+    )
+    plt.title("Distribution of overall GC Content across DNA Sequences ")
+    plt.xlabel("GC-content (%)")
+    plt.savefig(os.path.join(PLOTS_PATH, "clustered_gc_content.jpeg"))
+    plt.close()
+
+    print(
+        "\n~ SECTION B. Identify the top 5 most common k-mers (substrings) for k=3, 4, and 5"
+    )
     n = 5
     for k in K_TOP_MERS:
 
@@ -539,7 +638,7 @@ if __name__ == "__main__":
             os.path.join(PLOTS_PATH, f"top_{k}_mer_heatmap.jpeg"),
         )
 
-    print("\n~ c. Detect any unusual patterns")
+    print("\n~ SECTION C. Detect any unusual patterns")
     print("Find palindromes")
     df_palindromes = collect_all_palindromes(dna_sequences, PALINDROMES_MIN_LENGTH)
     print(df_palindromes.head())
