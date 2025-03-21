@@ -118,8 +118,8 @@ In this search, a tandem repeat had a minimum length of 1, a maximum length of 1
 
 There are also various interesting tandem repeats. For example, in sequence 80 there is a tandem repeat of 66 nucleotides pairs, composed by repeating "CGGAAGAGGCGGAGTCTTCTTCCGAGGACCATT" twice. Among the longest and most repeated sequences there are the repeated patterns "CA", "AG" and "GT" with 26,26 and 20 repetitions each for a total lenght of 52,52 and 40 bases respectively.
 
-What are the top 10 repeating patterns most repeated in a single tandem repeat?
-
+**What are the top 10 repeating patterns most repeated in a single tandem repeat?
+**
 |   sequence_id |   length | repeating_pattern   |   n_repetitions |   start |   end |
 |--------------:|---------:|:--------------------|----------------:|--------:|------:|
 |           130 |       36 | T                   |              36 |     799 |   834 |
