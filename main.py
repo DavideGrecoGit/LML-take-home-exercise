@@ -2,6 +2,7 @@ import json
 import argparse
 from pathlib import Path
 
+FILE_PATH = "./dna_sequences.json"
 DNA_SEQUENCE_KEY = "sequences"
 
 
@@ -39,9 +40,12 @@ def read_dna_sequences(file_path: str, dna_sequence_key: str) -> list:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    file_path = parser.add_argument("-file", "--file_path", type=str)
+    file_path = parser.add_argument("-file", "--file_path", type=str, default=FILE_PATH)
+    seq_key = parser.add_argument(
+        "-key", "--seq_key", type=str, default=DNA_SEQUENCE_KEY
+    )
     args = parser.parse_args()
 
-    dna_sequences = read_dna_sequences(args.file_path, DNA_SEQUENCE_KEY)
+    dna_sequences = read_dna_sequences(args.file_path, args.seq_key)
 
     print(dna_sequences)
