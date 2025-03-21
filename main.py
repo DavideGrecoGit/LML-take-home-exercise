@@ -16,6 +16,10 @@ PLOTS_PATH = "./plots"
 
 PALINDROMES_MIN_LENGTH = 20
 
+TANDEM_REPEATS_MIN_LENGTH = 1
+TANDEM_REPEATS_MAX_LENGTH = 100
+TANDEM_REPEATS_MIN_REPEATS = 5
+
 
 def read_dna_sequences(file_path: str, dna_sequence_key: str) -> list:
     """Reads DNA sequences from a JSON file.
@@ -322,8 +326,9 @@ def find_palindromes_idx(sequence: str, min_length=20) -> list[tuple[int, int]]:
 
 
 def collect_all_palindromes(dna_sequences: list[str]) -> pd.DataFrame:
-    """Find all palindromes, along their lenght and start and end indices,
-    in each sequence of a given list of DNA sequences.
+    """In each sequence of a given list of DNA sequences, find all palindromes along with:
+     - their lenght
+     - start and end indices
 
     Args:
         dna_sequences (list[str]): List of DNA sequences, should contain only A, T, C, G characters.
@@ -354,6 +359,135 @@ def collect_all_palindromes(dna_sequences: list[str]) -> pd.DataFrame:
     df_palindromes.sort_values("length", ascending=False)
 
     return df_palindromes
+
+
+def find_repeating_pattern(tandem_repeat: str, min_length: int) -> str:
+    """Find the repeating pattern of a given tandem_repeat sequence.
+    The repeating pattern must be longer than or equal to the specified minimum length.
+
+    A repeating pattern is the smallest repeating unit that can be repeated to form the given tandem repeat.
+
+    Args:
+        tandem_repeat (str): The tandem repeat sequence to decompone.
+        min_length (int): Minimum lenght of the repeating pattern.
+
+    Returns:
+        str: The found repeating pattern. If no repeating pattern is found, an empty string is returned.
+    """
+
+    for i in range(min_length - 1, len(tandem_repeat)):
+
+        base_pattern = tandem_repeat[: i + 1]
+
+        if base_pattern * (len(tandem_repeat) // len(base_pattern)) == tandem_repeat:
+            return base_pattern
+
+    return ""
+
+
+def find_tandem_repeats_idx(
+    sequence: str,
+    min_length: int = 1,
+    max_length: int = -1,
+    min_repeats: int = 3,
+) -> list[tuple[int, int]]:
+    """Find the start and end indices of all tandem repeats in the given sequence that have a length between
+    the specified minimum and maximum lengths (inclusive) and meet the minimum number of repetitions required.
+    Overlapping tandem repeats are NOT included.
+
+    A tandem repeat is a DNA sequence consisting of a repeating pattern occurring consecutively.
+
+    Args:
+        sequence (str): DNA sequence, should contain only A, T, C, G characters.
+        min_length (int): The minimum length of the repeating pattern.
+        max_length (int, optional): The maximum length of the repeating pattern. Defaults to -1,
+                                     which indicates no maximum length.
+        min_repeats (int): The minimum number of repeats required to consider it a tandem repeat.
+
+    Returns:
+        list[tuple[int, int]]: List of all the start and end indices (0-based) of the found tandem repeats.
+                               If no tandem repeats are found, an empty list is returned.
+
+    """
+
+    # (.{min_length,max_lenght}) -> all sequences of any char of length between min and max length
+    # \1 -> any matched content has to be repeated
+    # {min_repeats,} -> they have to repeat at least "min_repeats" times
+    pattern = r"(.{%d,%d})\1{%d,}" % (min_length, max_length, min_repeats)
+
+    if min_length > max_length:
+        pattern = r"(.{%d,})\1{%d,}" % (min_length, min_repeats)
+
+    matches = re.finditer(pattern, sequence)
+
+    tandem_repeats = []
+
+    for m in matches:
+
+        tandem_repeats.append((m.start(), m.end()))
+
+    return tandem_repeats
+
+
+def collect_all_tandem_repeats(
+    dna_sequences: list[str],
+    min_length: int = 1,
+    max_length: int = -1,
+    min_repeats: int = 3,
+) -> pd.DataFrame:
+    """In each sequence of a given list of DNA sequences, find all tandem_repeats along with:
+     - their lenght
+     - repeating pattern
+     - number of repetitions
+     - start and end indices
+
+    Args:
+        dna_sequences (list[str]): List of DNA sequences, should contain only A, T, C, G characters.
+        min_length (int): The minimum length of the repeating pattern.
+        max_length (int, optional): The maximum length of the repeating pattern. Defaults to -1,
+                                     which indicates no maximum length.
+        min_repeats (int): The minimum number of repeats required to consider it a tandem repeat.
+
+    Returns:
+        pd.DataFrame: A Pandas DataFrame containing the found tandem_repeats and their information, for each sequence.
+    """
+
+    all_tandem_repeats = []
+
+    for id, sequence in enumerate(dna_sequences):
+
+        tandem_repeats_idx = find_tandem_repeats_idx(
+            sequence, min_length, max_length, min_repeats
+        )
+
+        for start, end in tandem_repeats_idx:
+
+            tandem_repeat = sequence[start:end]
+
+            repeating_pattern = find_repeating_pattern(tandem_repeat, min_length)
+            n_repetitions = (
+                len(tandem_repeat) // len(repeating_pattern) if repeating_pattern else 0
+            )
+
+            n_nucleotides = len(repeating_pattern) if repeating_pattern else 0
+
+            all_tandem_repeats.append(
+                {
+                    "sequence_id": id,
+                    "tandem_repeat": tandem_repeat,
+                    "length": end - start,
+                    "repeating_pattern": repeating_pattern,
+                    "n_nucleotides": n_nucleotides,
+                    "n_repetitions": n_repetitions,
+                    "start": start + 1,  # Adjusting for 1-based index
+                    "end": end,
+                }
+            )
+
+    df_tandem_repeats = pd.DataFrame(all_tandem_repeats)
+    df_tandem_repeats.rename_axis("sequence_id", inplace=True)
+
+    return df_tandem_repeats
 
 
 if __name__ == "__main__":
@@ -404,6 +538,29 @@ if __name__ == "__main__":
         )
 
     print("\n~ c. Detect any unusual patterns")
-    print("Found palindromes")
+    print("Find palindromes")
     df_palindromes = collect_all_palindromes(dna_sequences)
     print(df_palindromes.head())
+
+    print("\nFind tandem repeats")
+    df_tandem_repeats = collect_all_tandem_repeats(
+        dna_sequences,
+        TANDEM_REPEATS_MIN_LENGTH,
+        TANDEM_REPEATS_MAX_LENGTH,
+        TANDEM_REPEATS_MIN_REPEATS,
+    )
+
+    print("\nWhat are the top 10 longest tandem repeats in the dataset?\n")
+    print(df_tandem_repeats.sort_values("length", ascending=False).head(10))
+
+    print(
+        "\nWhat are the top 10 repeating patterns most repeated in a single tandem repeat?\n"
+    )
+    print(df_tandem_repeats.sort_values("n_repetitions", ascending=False).head(10))
+
+    print("\nWhat are the top 10 most common repeating patterns in the dataset?\n")
+    print(
+        df_tandem_repeats.groupby("repeating_pattern")
+        .sum()["n_repetitions"]
+        .nlargest(10)
+    )
