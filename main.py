@@ -180,7 +180,7 @@ def count_kmers(sequence: str, k: int = 2) -> dict[str, int]:
 
 
 def compute_dinucleotide_freq(dna_sequences: list[str]) -> pd.DataFrame:
-    """Compute the dinucleotide frequency of a given list of DNA sequences.
+    """Compute the dinucleotide frequency for each sequence in a given list of DNA sequences.
     For each found dinucleotide in a sequence, its frequency is computed as: (occurrence of dinucleotide) / (total number of dinucleotides)
 
     Args:
@@ -209,6 +209,41 @@ def compute_dinucleotide_freq(dna_sequences: list[str]) -> pd.DataFrame:
     df_dinucleotide_freq.rename_axis("sequence_id", inplace=True)
 
     return df_dinucleotide_freq
+
+
+def compute_top_kmers_count(
+    dna_sequences: list[str], k: int, top_n: int
+) -> pd.DataFrame:
+    """Compute the counts of the top k-mers for each sequence in a given list of DNA sequences.
+
+    A k-mer is a sequence of k nucleotides in a DNA sequence.
+
+    Args:
+        dna_sequences (list[str]): List of DNA sequences, should contain only A, T, C, G characters.
+        k (int): the k-mer length.
+        top_n (int): The number of top k-mers to return. If negative returns an empty Pandas Dataframe.
+
+    Returns:
+        pd.DataFrame: A Pandas DataFrame containing the count of the top n k-mers for each sequence.
+    """
+
+    df_top_kmers = []
+
+    if top_n > 0:
+
+        for sequence in dna_sequences:
+
+            kmers_counts = count_kmers(sequence, k)
+
+            top_keys = sorted(kmers_counts, key=kmers_counts.get, reverse=True)[:top_n]  # type: ignore
+
+            df_top_kmers.append({key: kmers_counts[key] for key in top_keys})
+
+    df_top_kmers = pd.DataFrame(df_top_kmers)
+    df_top_kmers.fillna(0, inplace=True)
+    df_top_kmers.rename_axis("sequence_id", inplace=True)
+
+    return df_top_kmers
 
 
 def plot_kmer_heatmap(
@@ -257,9 +292,21 @@ if __name__ == "__main__":
 
     print("Compute dinucleotide frequency")
     df_dinucleotide_freq = compute_dinucleotide_freq(dna_sequences)
-
     plot_kmer_heatmap(
         df_dinucleotide_freq,
         "Dinucleotide Frequency Heatmap",
         os.path.join(PLOTS_PATH, "dinucleotide_freq.jpeg"),
     )
+
+    print("\n~ b. Identify the top 5 most common k-mers (substrings) for k=3, 4, and 5")
+    n = 5
+    for k in [3, 4, 5]:
+
+        print(f"Compute top {n} {k}-mer count")
+
+        top_kmers = compute_top_kmers_count(dna_sequences, k, n)
+        plot_kmer_heatmap(
+            top_kmers,
+            f"Top {n} {k}-mer Count Heatmap",
+            os.path.join(PLOTS_PATH, f"top_{k}_mer_heatmap.jpeg"),
+        )
