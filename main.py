@@ -23,6 +23,7 @@ VALID_CHARS = {"T", "G", "C", "A"}
 
 PLOTS_PATH = "./plots"
 
+TOP_N = 5
 K_TOP_MERS = [3, 4, 5]
 
 PALINDROMES_MIN_LENGTH = 20
@@ -641,15 +642,15 @@ if __name__ == "__main__":
     print(
         "\n~ SECTION B. Identify the top 5 most common k-mers (substrings) for k=3, 4, and 5"
     )
-    n = 5
+
     for k in K_TOP_MERS:
 
-        print(f"Compute top {n} {k}-mer count")
+        print(f"Compute top {TOP_N} {k}-mer count")
 
-        top_kmers = compute_top_kmers_count(dna_sequences, k, n)
+        top_kmers = compute_top_kmers_count(dna_sequences, k, TOP_N)
         plot_kmer_heatmap(
             top_kmers,
-            f"Top {n} {k}-mer Count Heatmap",
+            f"Top {TOP_N} {k}-mer Count Heatmap",
             os.path.join(PLOTS_PATH, f"top_{k}_mer_heatmap.jpeg"),
         )
 
