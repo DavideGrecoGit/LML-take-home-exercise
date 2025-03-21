@@ -3,10 +3,16 @@ import argparse
 from pathlib import Path
 from collections import Counter
 import re
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+import os
 
 FILE_PATH = "./dna_sequences.json"
 DNA_SEQUENCE_KEY = "sequences"
 VALID_CHARS = {"T", "G", "C", "A"}
+
+PLOTS_PATH = "./plots"
 
 
 def read_dna_sequences(file_path: str, dna_sequence_key: str) -> list:
@@ -46,8 +52,8 @@ def print_invalid_chars(dna_sequences: list[str], valid_chars: set[str]) -> None
     Additionally, print the count of each invalid character found.
 
     Args:
-        dna_sequences (list[str]): list of DNA sequences.
-        valid_chars (list[str]): set of accepted nucleotide bases.
+        dna_sequences (list[str]): List of DNA sequences.
+        valid_chars (list[str]): Set of accepted nucleotide bases.
     """
 
     invalid_chars = []
@@ -78,8 +84,8 @@ def remove_invalid_chars(dna_sequences: list[str], valid_chars: set[str]) -> lis
     """For each sequence, remove all the invalid characters found.
 
     Args:
-        dna_sequences (list[str]): list of DNA sequences.
-        valid_chars (list[str]): set of accepted nucleotide bases.
+        dna_sequences (list[str]): List of DNA sequences.
+        valid_chars (list[str]): Set of accepted nucleotide bases.
     Returns:
         list[str]: A list of DNA sequences without any invalid characters.
     """
@@ -94,6 +100,57 @@ def remove_invalid_chars(dna_sequences: list[str], valid_chars: set[str]) -> lis
         dna_sequences[i] = re.sub(f"[^{valid_pattern}]", "", dna_sequences[i])
 
     return dna_sequences
+
+
+def compute_gc_content(dna_sequences: list[str]) -> pd.DataFrame:
+    """Compute the overall GC-content percentage of each sequence in a given list of DNA sequence.
+    The GC-content percentage is calculated as: (number of G and C) / (length of the sequence) * 100
+
+    Args:
+        dna_sequences (list[str]): List of DNA sequence, should contain only A, T, C, G characters.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing the GC-content of each sequence.
+    """
+
+    df_gc_content = []
+
+    for id, sequence in enumerate(dna_sequences):
+
+        if len(sequence) == 0:
+            gc_content = 0
+        else:
+            g_count = sequence.count("G")
+            c_count = sequence.count("C")
+
+            gc_content = (g_count + c_count) / len(sequence) * 100
+
+        df_gc_content.append({"gc_content": gc_content})
+
+    df_gc_content = pd.DataFrame(df_gc_content)
+    df_gc_content.rename_axis("sequence_id", inplace=True)
+
+    return df_gc_content
+
+
+def plot_gc_content(
+    df_gc_content: pd.DataFrame,
+    plot_name_path: str | os.PathLike = None,  # type: ignore
+):
+    """Compute the overall GC-content of a given list of DNA sequences.
+    If a path is given, plot and saves an histogram of the computed gc-content.
+
+    Args:
+        df_gc_content (pd.DataFrame): A 1-D DataFrame containing the GC-content of each sequence.
+        plot_name_path (str | os.PathLike, optional): Path to save the plot. Defaults to None.
+
+    """
+
+    sns.histplot(data=df_gc_content, kde=True)
+    plt.title("Distribution of overall GC Content across DNA Sequences")
+    plt.xlabel("GC-content (%)")
+    plt.savefig(plot_name_path)
+    plt.close()
 
 
 if __name__ == "__main__":
@@ -112,3 +169,12 @@ if __name__ == "__main__":
     print("\n~ Removing invalid characters")
     dna_sequences = remove_invalid_chars(dna_sequences, VALID_CHARS)
     print_invalid_chars(dna_sequences, VALID_CHARS)
+
+    print("\n~ a. Calculate and report basic sequence statistic")
+
+    print("Compute and plot overall GC-content")
+    df_gc_content = compute_gc_content(dna_sequences)
+    plot_gc_content(
+        df_gc_content,
+        os.path.join(PLOTS_PATH, "overall_gc_content.jpeg"),
+    )
