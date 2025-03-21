@@ -99,6 +99,8 @@ A qualitative analysis of the top five K-mers of lenght 3,4,5, seems to confirm 
 |           164 | GCGCGGTAAAATATTTTACCGCGC           |       24 |       8 |    31 |
 |           165 | GCGCCCACGTACGTGGGCGC               |       20 |     495 |   514 |
 
+We found five palindromes of at least length 20, with the longest of length 34. Four of these palindromes were found in sequences belonging to cluster 1, having mostly GG,GC,CG or AT,TT,AA,TA pairs. Possibly having fewer dinucleotides combinations leads to an increased chance of having palindromes.
+
 #### Tandem repeats
 
 In this search, a tandem repeat had a minimum length of 1, a maximum length of 100 and had to repeat at least once.
